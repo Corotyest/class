@@ -1,5 +1,7 @@
-local class = require 'class'
+local class = require './class'
 local enums = class.enums
+
+p(enums.getted.Public)
 
 -- local i = 0
 -- for name, ind_enum in enums.setted.Iter() do

@@ -192,6 +192,9 @@ local function enumClass()
 		__newindex = function(self, key, value)
 			local hash = self[key]
 			if hash and tostring(hash) ~= none then
+                if hash == value then
+                    return nil
+                end
 				return error('cannot overwrite enum value', 2)
 			end
 
@@ -257,7 +260,7 @@ local function enum(name, parent)
 	end
 
 	for name in pairs(values) do
-		enum[name] = none -- enum[name] or enumClass()
+		enum[name] = enum[name] or none -- enumClass()
 	end
 
 	enum.Name = name or none
@@ -297,13 +300,13 @@ local enumResponses = {
 }
 
 do -- configurate raturn types
-    for _, enum in pairs(enumResponses) do
+    for _, enumres in pairs(enumResponses) do
         for rawType, options in pairs(responseType) do
             local raw = options.RawType
-            options.RawType = format(raw, enum.Name)
+            options.RawType = format(raw, enumres.Name)
 
-            local enumType = enum(rawType, enum)
-            enum[rawType] = enumType
+            local enumType = enum(rawType, enumres)
+            enumres[rawType] = enumType
         end
     end
 end
@@ -417,7 +420,7 @@ return setmetatable({
         end
 
         function meta:__index(key)
-            local getEvent = class[onGet or onGet.Name]
+            -- local getEvent = class[onGet or onGet.Name]
 
             if not isObject(self) then
                 return rawget(self, key)

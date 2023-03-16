@@ -163,7 +163,8 @@ local none = 'None'
 local values = {
 	Name = 'string',
 	Value = 'number',
-	RawType = 'string'
+	RawType = 'string',
+    Parent = 'table',
 }
 
 local enums = { }
@@ -213,6 +214,7 @@ local function enum(name, parent)
 	end
 
 	local enum = enumClass()
+    enum.Parent = parent
     enums[enum] = true
 
     function enum:IsParent(object)
@@ -242,7 +244,7 @@ local function enum(name, parent)
 	end
 
 	for name in pairs(values) do
-		enum[name] = enum[name] or enumClass()
+		enum[name] = none -- enum[name] or enumClass()
 	end
 
 	enum.Name = name or none
@@ -258,21 +260,22 @@ getted.Value = 1
 getted.RawType = 'GettedEnumValue'
 
 local classTypes = {
-    enum 'Public',
-    enum 'Private',
-    enum 'Protected'
+    'Public',
+    'Private',
+    'Protected'
 }
 
-local function mixEnum(enum, types)
-    local name = enum.Name
+local function mixEnum(parent, types)
+    local name = parent.Name
     name = (name:sub(1, 1):upper() .. name:sub(2))
     for _, rawEnum in pairs(types) do
-        rawEnum.Value = enum.Value + 01
-        rawEnum.Parent = enum
-        enum[rawEnum.Name .. name] = rawEnum
+        rawEnum = enum(rawEnum)
+        --rawEnum.Value = enum.Value + 1
+        rawEnum.Parent = parent
+        parent[rawEnum.Name .. name] = rawEnum
     end
 
-    return enum
+    return parent
 end
 
 local enumResponses = {

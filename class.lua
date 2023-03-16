@@ -217,6 +217,19 @@ local function enum(name, parent)
     enum.Parent = parent
     enums[enum] = true
 
+    local function subenums(self, index)
+        local key, value = self.Iter()(nil, index)
+        if key and not isEnum(value) then
+            return subenums(self, key)
+        end
+
+        return key, value
+    end
+
+    function enum:SubEnums()
+        return subenums, self, nil
+    end
+
     function enum:IsParent(object)
         if not self.Parent then
             return nil
@@ -251,6 +264,10 @@ local function enum(name, parent)
 	return enum
 end
 
+function isEnum(enum)
+    return type(enum) == 'table' and enums[enum] == true
+end
+
 local setted = enum 'Setted'
 setted.Value = 0
 setted.RawType = 'SettedEnumValue'
@@ -259,33 +276,45 @@ local getted = enum 'Getted'
 getted.Value = 1
 getted.RawType = 'GettedEnumValue'
 
-local classTypes = {
-    'Public',
-    'Private',
-    'Protected'
+local responseType = {
+    Public = {
+        Value = 2,
+        RawType = 'Public: %s'
+    },
+    Private = {
+        Value = 3,
+        RawType = 'Private: %s'
+    },
+    Protected = {
+        Value = 4,
+        RawType = 'Protected: %s'
+    }
 }
-
-local function mixEnum(parent, types)
-    local name = parent.Name
-    name = (name:sub(1, 1):upper() .. name:sub(2))
-    for _, rawEnum in pairs(types) do
-        rawEnum = enum(rawEnum)
-        --rawEnum.Value = enum.Value + 1
-        rawEnum.Parent = parent
-        parent[rawEnum.Name .. name] = rawEnum
-    end
-
-    return parent
-end
 
 local enumResponses = {
-    setted = mixEnum(setted, classTypes),
-    getted = mixEnum(getted, classTypes)
+    setted = setted,
+    getted = getted
 }
+
+do -- configurate raturn types
+    for _, enum in pairs(enumResponses) do
+        for rawType, options in pairs(responseType) do
+            local raw = options.RawType
+            options.RawType = format(raw, enum.Name)
+
+            local enumType = enum(rawType, enum)
+            enum[rawType] = enumType
+        end
+    end
+end
 
 local onGet = enum 'OnGet'
 local onSet = enum 'OnSet'
 local onCall = enum 'OnCall'
+
+onGet.Value = 10
+onSet.Value = 20
+onCall.Value = 30
 
 local events = {
     get = onGet,
@@ -293,17 +322,9 @@ local events = {
     call = onCall,
 }
 
-local n = 1
-for _, enum in pairs(events) do
-    enum.Value = n
-    enum.RawType = enum.Name .. 'EnumValue'
-
-    n = n + 1
-end
-
 return setmetatable({
     enum = enum, -- to create comparable enum's
-    isEnum = function(obj) return enums[obj] == true end,
+    isEnum = isEnum,
     enumClass = enumClass, -- the base to create an enumerated value.
 
     enums = enumResponses,

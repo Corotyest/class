@@ -34,7 +34,7 @@ local function getn(self)
     return n
 end
 
---- Clones table `self` in to the optional `table`, if `self` has not items return a new empty new table.
+--- Clones table `self` in to the optional `table`, if `self` has not items return a new empty table.
 ---@param self table
 ---@param table table?
 ---@return table

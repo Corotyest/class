@@ -10,6 +10,18 @@ local enums = class.enums
 --     end
 -- end
 
+-- local n, n1 = 0, 2
+-- for name, enum in pairs(class.enums) do
+--     for index, subenum in enum:SubEnums() do
+--         -- if n == n1 then
+--         --     break
+--         -- end
+--         p(name, index, subenum)
+
+--         n=n+1
+--     end
+-- end
+
 -- p(class)
 -- p(class.getnOfClasses())
 

@@ -10,6 +10,7 @@ local badArg = 'bad argument #%d, for %s (%s expected got %s)'
 local className  = 'class → %s'
 local objectName = 'object [%s]'
 local classExists = 'class [%s] already exists and cannot be overwrited'
+local unavailableName = 'handle nil*'
 
 local attemptAccess = 'cannot access to private value %s.%s'
 local attemptOverwrite = 'cannot overwrite protected value %s.%s'
@@ -110,8 +111,11 @@ local function find(self, prop, value)
 	return nil, nil
 end
 
-
--- ::provitional::
+--- Searches for the `object` if it is in the registered `classes`, and return boolean. <br>
+--- If you specify the second `strict` argument, it'll only search on the classes by the index.
+---@param object any
+---@param strict boolean?
+---@return boolean | nil
 local function isClass(object, strict)
     if not object then
         return nil -- not object provided
@@ -126,25 +130,39 @@ local function isClass(object, strict)
     return value == true
 end
 
+--- Searches fo the `class` if it is in the registered `objects` and return boolean.
+---@param class any
+---@return boolean
 local function isObject(class)
     return class and objects[class] == true
 end
 
+--- Verify if the string `key` starts by underscores that could be a `method` or `private propertie`.
+---@param key string
+---@return true | nil
 local function scored(key)
     local type1 = type(key)
     if type1 ~= 'string' then
         return error(format(badArg, 1, 'scored', 'string', type1))
     end
 
-    return sfind(key, '__', 1, true) == 1
+    return sfind(key, '__', 1, true) == 1 or nil
 end
 
+--- If the current `lvl`; level function is a associate of the table `self`.
+---@param self table
+---@param lvl number?
+---@return any
 local function associated(self, lvl)
-    local fn = getinfo(lvl or 2, 'f').func
+    local fn = getinfo(lvl or 2, 'f')
 
-    return find(self, fn)
+    return fn and find(self, fn.func)
 end
 
+--- If the givened argument `value` or the current function is a member of the `class`; return true.
+---@param class Class
+---@param value any
+---@return true | nil
 local function classAssociate(class, value)
     if not isClass(class) then
         return nil -- not a class provided
@@ -159,6 +177,9 @@ local function inherit()
 
 end
 
+---*→ These variables are for the construction of Enumerated Values ←---
+
+---@alias None 'None'
 local none = 'None'
 local values = {
 	Name = 'string',
@@ -167,8 +188,18 @@ local values = {
     Parent = 'table',
 }
 
+---@class EnumClass
+---@field Iter fun(): fun(self, index: any?): any, any
+---@field Name string | None
+---@field Value number | None
+---@field Parent Enum | None
+---@field RawType string | None
+
+--- This is the allocation of the Enumerated Values
 local enums = { }
 
+--- This functions creates a new very simple super-class that manage an Enumerated Value or `EnumClass`.
+---@return EnumClass
 local function enumClass()
 	local pool = { }
 
@@ -211,14 +242,29 @@ local function enumClass()
 	})
 end
 
+
+---@class Enum: EnumClass
+---@field SubEnums fun(self: Enum): fun(self: Enum, index: any?), Enum, nil
+---@field IsParent fun(self: Enum, object: any): true | nil
+---@field IsEqualTo fun(self: Enum, value: any): boolean
+
+
+--- This function constructs over the super-class of Enumerated Value's that the `classEnum` returns. <br>
+--- Adds the `Name` to the `Enum` value, various helper functions and return the `Enum`.
+---@param name string
+---@param parent Enum?
+---@return Enum
 local function enum(name, parent)
 	if name and type(name) ~= 'string' then
 		return nil
 	end
 
-	local enum = enumClass()
-    enum.Parent = parent
-    enums[enum] = true
+    local Class = enumClass()
+
+    ---@type Enum
+    local Enum = setmetatable({}, getmetatable(Class))
+    Enum.Parent = parent or none
+    enums[Enum] = true
 
     local function subenums(self, index)
         local key, value = self.Iter()(nil, index)
@@ -229,23 +275,24 @@ local function enum(name, parent)
         return key, value
     end
 
-    function enum:SubEnums()
+    function Enum:SubEnums()
         return subenums, self, nil
     end
 
-    function enum:IsParent(object)
-        if not self.Parent then
+    function Enum:IsParent(object)
+        local parent = self.Parent
+        if not parent then
             return nil
         end
 
-        if self.Parent == object then
+        if parent == object then
             return true
         end
 
-        return enums[self.Parent] and self.Parent:IsParent(object)
+        return isEnum(parent) and parent:IsParent(object)
     end
 
-	function enum:IsEqualTo(value)
+	function Enum:IsEqualTo(value)
 		if rawequal(self, value) then
 			return true
 		end
@@ -260,16 +307,20 @@ local function enum(name, parent)
 	end
 
 	for name in pairs(values) do
-		enum[name] = enum[name] or none -- enumClass()
+		Enum[name] = Enum[name] or none -- enumClass()
 	end
 
-	enum.Name = name or none
-	return enum
+	Enum.Name = name or none
+	return Enum
 end
 
+--- Searches for the `enum` value in the registered `enums` table, returns boolean.
+---@param enum any
+---@return boolean
 function isEnum(enum)
     return type(enum) == 'table' and enums[enum] == true
 end
+
 
 local setted = enum 'Setted'
 setted.Value = 0
@@ -310,6 +361,7 @@ do -- configurate raturn types
         end
     end
 end
+
 
 local onGet = enum 'OnGet'
 local onSet = enum 'OnSet'
@@ -389,7 +441,7 @@ return setmetatable({
         end
 
         function meta:__call(...)
-            local isInit, callEvent = not self.initialized, self[onCall or onCall.Name]
+            local isInit, callEvent = self.initialized, self[onCall or onCall.Name]
             if isInit == true and type(callEvent) == 'function' then
                 return callEvent(self, ...)
             end
@@ -410,7 +462,7 @@ return setmetatable({
 
         function meta:__tostring()
             local formatName = classes[self] and className or objects[self] and objectName
-            return formatName and format(formatName, dish.__name or self.__name) or 'handle nil*'
+            return formatName and format(formatName, dish.__name or self.__name) or unavailableName
         end
 
         function meta:__pairs()
@@ -433,7 +485,7 @@ return setmetatable({
             --     local enumValue, value = getEvent(self, key)
             --     if enumValue:IsParent(getted) then
             --         if enumValue:IsEqualTo() then
-                        
+
             --         end           
             --     elseif getted:IsEqualTo(enumValue) then
             --         return value
@@ -442,7 +494,6 @@ return setmetatable({
 
             local public = roll[key]
             if public then
-                
                 return public
             end
 

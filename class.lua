@@ -394,7 +394,11 @@ local events = {
     call = call,
 }
 
-return setmetatable({
+---@alias Class table
+
+---@alias Name string
+---@operator call: Class
+local Class = {
     enum = enum, -- to create comparable enum's
     isEnum = isEnum,
     enumClass = enumClass, -- the base to create an enumerated value.
@@ -413,7 +417,9 @@ return setmetatable({
     getnOfClasses = function()
         return count(classes, true)
     end
-}, {
+}
+
+setmetatable(Class, {
     __metatable = {}, -- protected metamethods.
 
     __call = function(self, name, parent)
@@ -440,7 +446,7 @@ return setmetatable({
                     return value
                 end
 
-                local parent = dish.__parent
+                local parent = rawget(self, '__parent')
                 return parent and parent[key] or nil
             end
         })
@@ -457,7 +463,7 @@ return setmetatable({
         end
 
         function dish.parent(value)
-            if value and isAssociated() then
+            if value and isAssociated(4) then
                 dish.__parent = value
             end
             return dish.__parent
@@ -478,8 +484,12 @@ return setmetatable({
 
         function meta:__call(...)
             local isInit, callEvent = self.initialized, self[call]
-            if isInit == true and type(callEvent) == 'function' then
-                return callEvent(self, ...)
+            if isInit == true then
+                if type(callEvent) == 'function' then
+                    return callEvent(self, ...)
+                end
+
+                return nil
             end
 
             -- if self.syncInit then
@@ -508,16 +518,19 @@ return setmetatable({
         end
 
         function meta:__index(key)
-            local getEvent = class[get]
-
             if not isObject(self) then
                 return rawget(self, key)
             end
 
+            local getEvent = class[get]
+
+            local public, protected
+            local isPriv, isMember
+
             if type(getEvent) == 'function' then
                 local enum, value = getEvent(self, key)
                 if not isEnum(enum) then
-                    return nil
+                    goto fallen
                 end
 
                 ---@type Enum
@@ -529,26 +542,27 @@ return setmetatable({
                     if enum:IsEqualTo(getted.Private) then
                         isPriv = true
                         goto attempt_access
-                        -- elseif enum:IsEqualTo(setted.Public) then
-                        -- elseif enum:IsEqualTo(setted.Protected) then
+                    -- elseif enum:IsEqualTo(setted.Public) then
+                    -- elseif enum:IsEqualTo(setted.Protected) then
                     end
                 end
 
                 return nil
             end
 
-            local public = roll[key]
+            ::fallen::
+            public = roll[key]
             if public then
                 return public
             end
 
-            local protected = dish[key] or class[key]
+            protected = dish[key] or class[key]
             if not protected then
                 return nil
             end
 
-            local isPriv = scored(key)
-            local isMember = isAssociated(3)
+            isPriv = type(key) == 'string' and scored(key)
+            isMember = isAssociated(3)
 
             ::attempt_access::
             if isPriv and not isMember then
@@ -559,16 +573,18 @@ return setmetatable({
         end
 
         function meta:__newindex(key, value)
-            local setEvent = self[set]
-
             if not isObject(self) then
                 return rawset(self, key, value)
             end
 
+            local setEvent = self[set]
+
+            local isPriv, isMember
+
             if type(setEvent) == 'function' then
                 local enum, value = setEvent(self, key)
                 if not isEnum(enum) then
-                    return nil
+                    goto fallen
                 end
 
                 ---@type Enum
@@ -590,14 +606,15 @@ return setmetatable({
                 return nil
             end
 
-            local isPriv = scored(key)
+            ::fallen::
+            isPriv = type(key) == 'string' and scored(key)
 
             ::attempt_overwrite::
             if self[key] and not isPriv then
                 return error(format(attemptOverwrite, tostring(self), key))
             end
 
-            local isMember = isAssociated(3)
+            isMember = isAssociated(3)
 
             ::attempt_access::
             if isPriv and not isMember then
@@ -646,3 +663,5 @@ return setmetatable({
         return class
     end
 })
+
+return Class

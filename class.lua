@@ -448,7 +448,7 @@ return setmetatable({
         local isAssociated
 
         local new = getinfo(1, 'f').func
-        function dish.__new(name, ...)
+        function roll.__new(name, ...)
             return new(self, name, ...)
         end
 
@@ -513,9 +513,6 @@ return setmetatable({
             if not isObject(self) then
                 return rawget(self, key)
             end
-            -- if not isClass(self) then
-
-            -- end
 
             if type(getEvent) == 'function' then
                 local enum, value = getEvent(self, key)
@@ -567,9 +564,6 @@ return setmetatable({
             if not isObject(self) then
                 return rawset(self, key, value)
             end
-            -- if not isClass(self) then
-
-            -- end
 
             if type(setEvent) == 'function' then
                 local enum, value = setEvent(self, key)

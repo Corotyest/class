@@ -37,7 +37,7 @@ end
 
 --- Clones table `self` in to the optional `table`, if `self` has not items return a new empty table.
 ---@param self table
----@param table table?
+---@param table? table
 ---@return table
 local function clone(self, table)
     local type1, type2 = type(self), type(table)
@@ -59,7 +59,7 @@ end
 
 --- Counts the number of `value` that the table `self` has, but if not `value` passed return all the key-paris count.
 ---@param self table
----@param value any?
+---@param value? any
 ---@return number
 local function count(self, value)
     local type1, type2 = type(self), type(value)
@@ -84,7 +84,7 @@ end
 --- Returns the `index` at the possition of found and the corresponding `value`.
 ---@param self table
 ---@param prop any
----@param value any?
+---@param value? any
 ---@return any, any
 local function find(self, prop, value)
     local type1, type2 = type(self), type(prop)
@@ -114,7 +114,7 @@ end
 --- Searches for the `object` if it is in the registered `classes`, and return boolean. <br>
 --- If you specify the second `strict` argument, it'll only search on the classes by the index.
 ---@param object any
----@param strict boolean?
+---@param strict? boolean
 ---@return boolean | nil
 local function isClass(object, strict)
     if not object then
@@ -151,7 +151,7 @@ end
 
 --- If the current `lvl`; level function is a associate of the table `self`.
 ---@param self table
----@param lvl number?
+---@param lvl? number
 ---@return any
 local function associated(self, lvl)
     local fn = getinfo(lvl or 2, 'f')
@@ -217,6 +217,21 @@ local function enumClass()
 	end
 
 	return setmetatable({}, {
+        __eq = function(self, value)
+            for name, rawtype in pairs(values) do
+                if type(value) ~= rawtype then
+                    goto continue
+                end
+
+                if self[name] == value then
+                    return true
+                end
+
+                ::continue::
+            end
+
+            return false
+        end,
 		__index = function(self, key)
 			return pool[key]
 		end,
@@ -227,11 +242,13 @@ local function enumClass()
                     return nil
                 end
 				return error('cannot overwrite enum value', 2)
+            elseif value == none then
+                return nil
 			end
 
 			local type1 = type(value)
 			if hash and type1 ~= (values[key] or type1) then
-				return error(format('bad type for enum \'%s\' (%s expected got type %s)', key, values[key], type1), 2)
+				return error(format('bad type for propertie \'%s\' (%s expected got type %s)', key, values[key], type1), 2)
 			end
 
 			pool[key] = value
@@ -252,7 +269,7 @@ end
 --- This function constructs over the super-class of Enumerated Value's that the `classEnum` returns. <br>
 --- Adds the `Name` to the `Enum` value, various helper functions and return the `Enum`.
 ---@param name string
----@param parent Enum?
+---@param parent? Enum
 ---@return Enum
 local function enum(name, parent)
 	if name and type(name) ~= 'string' then
@@ -363,18 +380,18 @@ do -- configurate raturn types
 end
 
 
-local onGet = enum 'OnGet'
-local onSet = enum 'OnSet'
-local onCall = enum 'OnCall'
+local get = enum 'OnGet'
+local set = enum 'OnSet'
+local call = enum 'OnCall'
 
-onGet.Value = 10
-onSet.Value = 20
-onCall.Value = 30
+set.Value = 10
+get.Value = 20
+call.Value = 30
 
 local events = {
-    get = onGet,
-    set = onSet,
-    call = onCall,
+    get = get,
+    set = set,
+    call = call,
 }
 
 return setmetatable({
@@ -441,7 +458,7 @@ return setmetatable({
         end
 
         function meta:__call(...)
-            local isInit, callEvent = self.initialized, self[onCall or onCall.Name]
+            local isInit, callEvent = self.initialized, self[call]
             if isInit == true and type(callEvent) == 'function' then
                 return callEvent(self, ...)
             end
@@ -472,7 +489,7 @@ return setmetatable({
         end
 
         function meta:__index(key)
-            -- local getEvent = class[onGet or onGet.Name]
+            local getEvent = class[get]
 
             if not isObject(self) then
                 return rawget(self, key)
@@ -481,16 +498,26 @@ return setmetatable({
 
             -- end
 
-            -- if type(getEvent) == 'function' then
-            --     local enumValue, value = getEvent(self, key)
-            --     if enumValue:IsParent(getted) then
-            --         if enumValue:IsEqualTo() then
+            if type(getEvent) == 'function' then
+                local enum, value = getEvent(self, key)
+                if not isEnum(enum) then
+                    return nil
+                end
 
-            --         end           
-            --     elseif getted:IsEqualTo(enumValue) then
-            --         return value
-            --     end
-            -- end
+                ---@type Enum
+                enum = enum
+                if enum:IsEqualTo(getted) then
+                    return value
+                elseif enum:IsParent(getted) then
+                    -- redirect to the attempt_access label, so it will throw the error directly.
+                    if enum:IsEqualTo(getted.Protected) then
+                        isPriv = true
+                        goto attempt_access
+                    -- elseif enum:IsEqualTo(setted.Private) then
+                    -- elseif enum:IsEqualTo(setted.Public) then
+                    end
+                end
+            end
 
             local public = roll[key]
             if public then
@@ -505,8 +532,8 @@ return setmetatable({
             local isPriv = scored(key)
             local isMember = isAssociated(3)
 
+            ::attempt_access::
             if isPriv and not isMember then
-                ::attempt_access::
                 return error(format(attemptAccess, dish.__name, key))
             end
 
@@ -514,6 +541,8 @@ return setmetatable({
         end
 
         function meta:__newindex(key, value)
+            local setEvent = self[set]
+            
             if not isObject(self) then
                 return rawset(self, key, value)
             end
@@ -532,6 +561,42 @@ return setmetatable({
             end
 
             dish[key] = value
+        end
+
+        local iterOptions = {
+            meta = meta,
+            public = roll,
+            protected = dish,
+        }
+
+        function class:__iter(options)
+            local type1, type2 = type(self), type(options)
+            if type1 ~= 'table' then
+                return error(format(badArg, 'self', '__iter', 'table', type1), 2)
+            end
+
+
+            local pool = clone(self)
+
+            if type2 == 'table' then
+                for name in next, options do
+                    local option = iterOptions[name]
+                    if option then
+                        clone(option, pool)
+                    end
+                end
+            elseif options == 'string' then
+                local option = iterOptions[options]
+                if options then
+                    clone(option, pool)
+                end
+            elseif options == 'boolean' and options == true then
+                clone(iterOptions.protected, pool)
+            end
+
+            return function(_, index)
+                return next(pool, index)
+            end
         end
 
         return class

@@ -517,6 +517,8 @@ return setmetatable({
                         -- elseif enum:IsEqualTo(setted.Protected) then
                     end
                 end
+
+                return nil
             end
 
             local public = roll[key]
@@ -562,17 +564,22 @@ return setmetatable({
                     return value
                 elseif enum:IsParent(setted) then
                     -- redirect to the attempt_access label, so it will throw the error directly.
-                    if enum:IsEqualTo(setted.Private) then
+                    if enum:IsEqualTo(setted.Public) then
+                        return value
+                    elseif enum:IsEqualTo(setted.Private) then
                         isPriv = true
                         goto attempt_access
-                    -- elseif enum:IsEqualTo(setted.Public) then
-                    -- elseif enum:IsEqualTo(setted.Protected) then
+                    elseif enum:IsEqualTo(setted.Protected) then
+                        goto attempt_overwrite
                     end
                 end
+
+                return nil
             end
 
             local isPriv = scored(key)
 
+            ::attempt_overwrite::
             if self[key] and not isPriv then
                 return error(format(attemptOverwrite, tostring(self), key))
             end

@@ -433,7 +433,16 @@ return setmetatable({
             __name = name,
             __metatable = roll -- or meta
         }, {
-            __index = self
+            __index = function(self, key)
+                -- local pub = roll[key] -- distinct between "public" & protected
+                local value = self[key]
+                if value then
+                    return value
+                end
+
+                local parent = self.__parent
+                return parent and parent[key] or nil
+            end
         })
 
         local new = getinfo(1, 'f').func

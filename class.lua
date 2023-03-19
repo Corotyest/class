@@ -510,11 +510,11 @@ return setmetatable({
                     return value
                 elseif enum:IsParent(getted) then
                     -- redirect to the attempt_access label, so it will throw the error directly.
-                    if enum:IsEqualTo(getted.Protected) then
+                    if enum:IsEqualTo(getted.Private) then
                         isPriv = true
                         goto attempt_access
-                    -- elseif enum:IsEqualTo(setted.Private) then
-                    -- elseif enum:IsEqualTo(setted.Public) then
+                        -- elseif enum:IsEqualTo(setted.Public) then
+                        -- elseif enum:IsEqualTo(setted.Protected) then
                     end
                 end
             end
@@ -562,11 +562,11 @@ return setmetatable({
                     return value
                 elseif enum:IsParent(setted) then
                     -- redirect to the attempt_access label, so it will throw the error directly.
-                    if enum:IsEqualTo(setted.Protected) then
+                    if enum:IsEqualTo(setted.Private) then
                         isPriv = true
                         goto attempt_access
-                    -- elseif enum:IsEqualTo(setted.Private) then
                     -- elseif enum:IsEqualTo(setted.Public) then
+                    -- elseif enum:IsEqualTo(setted.Protected) then
                     end
                 end
             end

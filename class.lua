@@ -452,9 +452,9 @@ return setmetatable({
             return new(self, name, ...)
         end
 
-        -- function pool:__product(name)
-        --     return self.__new(name, self)
-        -- end
+        function roll:__product(name)
+            return self.__new(name, self)
+        end
 
         function dish.parent(value)
             if value and isAssociated() then

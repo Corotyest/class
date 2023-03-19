@@ -416,7 +416,7 @@ return setmetatable({
 }, {
     __metatable = {}, -- protected metamethods.
 
-    __call = function(self, name, ...)
+    __call = function(self, name, parent)
         local type1 = type(name)
         if type1 ~= 'string' then
             return error(format(badArg, 1, 'class', 'string', type1), 2)
@@ -431,19 +431,21 @@ return setmetatable({
         local roll = {}
         local dish = setmetatable({
             __name = name,
-            __metatable = roll -- or meta
+            __parent = isClass(parent, true) and parent or nil
         }, {
-            __index = function(self, key)
+            __index = function(dish, key)
                 -- local pub = roll[key] -- distinct between "public" & protected
                 local value = self[key]
                 if value then
                     return value
                 end
 
-                local parent = self.__parent
+                local parent = dish.__parent
                 return parent and parent[key] or nil
             end
         })
+
+        local isAssociated
 
         local new = getinfo(1, 'f').func
         function dish.__new(name, ...)
@@ -454,6 +456,13 @@ return setmetatable({
         --     return self.__new(name, self)
         -- end
 
+        function dish.parent(value)
+            if value and isAssociated() then
+                dish.__parent = value
+            end
+            return dish.__parent
+        end
+
         local meta = {}
         meta.__metatable = roll
 
@@ -462,7 +471,8 @@ return setmetatable({
 
         classes[class] = true
 
-        local function isAssociated(level)
+        function isAssociated(level)
+            level = level or 2
             return associated(class, level + 1) or associated(meta, level + 1)
         end
 

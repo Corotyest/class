@@ -3,6 +3,16 @@ local enums = class.enums
 
 p(enums.getted.Public)
 
+local t = { 1, 1 , 1 ,2 }
+local fn = function(i, n)
+    p(i, n)
+    return next(t, i)
+end
+
+for i, v in fn do
+    p(i,v)
+end
+
 -- local i = 0
 -- for name, ind_enum in enums.setted.Iter() do
 --     p(name)

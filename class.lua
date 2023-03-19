@@ -542,13 +542,35 @@ return setmetatable({
 
         function meta:__newindex(key, value)
             local setEvent = self[set]
-            
+
             if not isObject(self) then
                 return rawset(self, key, value)
             end
             -- if not isClass(self) then
 
             -- end
+
+            if type(setEvent) == 'function' then
+                local enum, value = setEvent(self, key)
+                if not isEnum(enum) then
+                    return nil
+                end
+
+                ---@type Enum
+                enum = enum
+                if enum:IsEqualTo(setted) then
+                    return value
+                elseif enum:IsParent(setted) then
+                    -- redirect to the attempt_access label, so it will throw the error directly.
+                    if enum:IsEqualTo(setted.Protected) then
+                        isPriv = true
+                        goto attempt_access
+                    -- elseif enum:IsEqualTo(setted.Private) then
+                    -- elseif enum:IsEqualTo(setted.Public) then
+                    end
+                end
+            end
+
             local isPriv = scored(key)
 
             if self[key] and not isPriv then
@@ -556,6 +578,8 @@ return setmetatable({
             end
 
             local isMember = isAssociated(3)
+
+            ::attempt_access::
             if isPriv and not isMember then
                 return error(format(attemptWritePriv, self.__name, key))
             end

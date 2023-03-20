@@ -62,6 +62,8 @@ local events = class.events
 -- p(eclass)
 -- print(eclass)
 
+class 't-class'; class 't-class'
+
 -- -- eclass.__tostring = {}
 -- p(eclass.__tostring)
 
@@ -150,3 +152,12 @@ for k, v in obj:__iter {--[[  meta = true, roll = true, ]] protected = true } do
 end
 
 p(obj:find(true, { protected = true }, 'parent'))
+
+local prod = obj:__product 'product'
+
+local prod_obj = prod 'init product'
+p(prod_obj.parent()) -- nil
+
+p(prod, prod_obj)
+
+p(prod_obj.normal)

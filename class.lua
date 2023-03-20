@@ -19,6 +19,7 @@ local attemptWritePriv = 'cannot write to private value %s.%s *leak permission'
 
 local classes = { }
 local objects = { }
+local aliasses = { }
 
 --- Get the number of key-pairs in the table `self`.
 ---@param self table
@@ -441,7 +442,7 @@ setmetatable(Class, {
             return error('provide a name with a length more than 0', 2)
         end
 
-        if self.isClass(name) then
+        if aliasses[name] == true then
             return error(format(classExists, name), 2)
         end
 
@@ -488,6 +489,7 @@ setmetatable(Class, {
         class.__name = name
 
         classes[class] = true
+        aliasses[name] = true
 
         function isAssociated(level, k)
             level = level or 2

@@ -1,7 +1,8 @@
 -- local task = require 'task'
 
-local format, sfind = string.format, string.find
+local unpack = table.unpack
 local getinfo = debug.getinfo
+local format, sfind = string.format, string.find
 
 -- argument errored
 local badArg = 'bad argument #%d, for %s (%s expected got %s)'

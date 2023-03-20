@@ -161,3 +161,8 @@ p(prod_obj.parent()) -- nil
 p(prod, prod_obj)
 
 p(prod_obj.normal)
+
+local t = {}
+
+prod_obj:__clone(true, {addAllScored=true,protected=true}, t)
+p(t)

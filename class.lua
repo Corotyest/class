@@ -559,12 +559,12 @@ setmetatable(Class, {
             end
 
             ::fallen::
-            public = roll[key]
+            public = class[key] or roll[key] -- won't throw errors
             if public then
                 return public
             end
 
-            protected = dish[key] or class[key]
+            protected = dish[key] -- because of parent
             if not protected then
                 return nil
             end

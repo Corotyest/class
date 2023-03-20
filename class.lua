@@ -113,22 +113,10 @@ local function find(self, prop, value)
 end
 
 --- Searches for the `object` if it is in the registered `classes`, and return boolean. <br>
---- If you specify the second `strict` argument, it'll only search on the classes by the index.
 ---@param object any
----@param strict? boolean
----@return boolean | nil
-local function isClass(object, strict)
-    if not object then
-        return nil -- not object provided
-    end
-
-    local class = classes[object]
-    if strict == true or class then
-        return class == true
-    end
-
-    local _, value = find(classes, object)
-    return value == true
+---@return boolean
+local function isClass(object)
+    return object and classes[object] == true
 end
 
 --- Searches fo the `class` if it is in the registered `objects` and return boolean.
@@ -396,10 +384,10 @@ local events = {
     call = call,
 }
 
----@alias Class table
+---@class Base
+---@field __new fun(name: string, parent: Base?): Base
 
----@alias Name string
----@operator call: Class
+---@operator call: Base
 local Class = {
     enum = enum, -- to create comparable enum's
     isEnum = isEnum,
@@ -447,6 +435,8 @@ setmetatable(Class, {
         local type1 = type(name)
         if type1 ~= 'string' then
             return error(format(badArg, 1, 'class', 'string', type1), 2)
+        elseif parent and (not isClass(parent) and not isObject(parent)) then
+            return error(format(badArg, 2, 'class', 'Class/Object', type(parent)))
         elseif #name == 0 then
             return error('provide a name with a length more than 0', 2)
         end
@@ -458,7 +448,7 @@ setmetatable(Class, {
         local roll = {}
         local dish = setmetatable({
             __name = name,
-            __parent = isClass(parent, true) and parent or nil
+            __parent = parent or nil
         }, {
             __index = function(dish, key)
                 -- local pub = roll[key] -- distinct between "public" & protected
@@ -523,7 +513,7 @@ setmetatable(Class, {
             local object = setmetatable({}, clone(self, clone(meta)))
 
             objects[object] = true
-            object.initialized = true
+            object.__initialized = true
 
             return object
         end

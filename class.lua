@@ -1,3 +1,9 @@
+--[[lit-meta
+    name = 'Corotyest/class'
+    author = 'Corotyest'
+    homepage = 'https://github.com/Corotyest/class'   
+]]
+
 -- local task = require 'task'
 
 local unpack = table.unpack

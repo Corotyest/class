@@ -29,18 +29,18 @@ local function getn(self)
     end
 
     local n = 0
-    for _ in pairs(self) do
+    for _ in next, (self) do
         n = n + 1
     end
     return n
 end
 
---- Clones table `self` in to the optional `table`, if `self` has not items return a new empty table.
+--- Clones table `self` in to the optional table `into`, if `self` has not items return a new empty table.
 ---@param self table
----@param table? table
+---@param into table?
 ---@return table
-local function clone(self, table)
-    local type1, type2 = type(self), type(table)
+local function clone(self, into)
+    local type1, type2 = type(self), type(into)
     if type1 ~= 'table' then
         return nil, format(badArg, 1, 'clone', 'table', type1)
     end
@@ -50,7 +50,7 @@ local function clone(self, table)
     end
 
     table = type2 == 'table' and table or { }
-    for index, value in pairs(self) do
+    for index, value in next, (self) do
         table[index] = value
     end
 
@@ -72,7 +72,7 @@ local function count(self, value)
     end
 
     local n = 0
-    for _, index in pairs(self) do
+    for _, index in next, (self) do
         n = ((index == value) and n + 1) or n
     end
 
@@ -94,7 +94,7 @@ local function find(self, prop, value)
 		return nil, format(badArg, 2, 'find', 'any'  , type2)
 	end
 
-	for index, content in pairs(self) do
+	for index, content in next, (self) do
 		if index == prop or content == prop then
             return index, content
 		end
@@ -153,10 +153,11 @@ end
 ---@param self table
 ---@param lvl? number
 ---@return any
-local function associated(self, lvl)
-    local fn = getinfo(lvl or 2, 'f')
+local function associated(self, lvl, k)
+    local info = getinfo(lvl or 2, 'f')
+    local fn = info and info.func
 
-    return fn and find(self, fn.func)
+    return self[k] == fn or fn and find(self, k or fn, k and fn or nil)
 end
 
 --- If the givened argument `value` or the current function is a member of the `class`; return true.
@@ -446,7 +447,7 @@ setmetatable(Class, {
                     return value
                 end
 
-                local parent = rawget(self, '__parent')
+                local parent = rawget(dish, '__parent')
                 return parent and parent[key] or nil
             end
         })
@@ -463,7 +464,7 @@ setmetatable(Class, {
         end
 
         function dish.parent(value)
-            if value and isAssociated(4) then
+            if value and isAssociated(3) then
                 dish.__parent = value
             end
             return dish.__parent
@@ -477,9 +478,9 @@ setmetatable(Class, {
 
         classes[class] = true
 
-        function isAssociated(level)
+        function isAssociated(level, k)
             level = level or 2
-            return associated(class, level + 1) or associated(meta, level + 1)
+            return associated(class, level + 1, k) or associated(meta, level + 1, k)
         end
 
         function meta:__call(...)
@@ -509,12 +510,6 @@ setmetatable(Class, {
         function meta:__tostring()
             local formatName = classes[self] and className or objects[self] and objectName
             return formatName and format(formatName, dish.__name or self.__name) or unavailableName
-        end
-
-        function meta:__pairs()
-            return function(_, index)
-                return next(self, index)
-            end
         end
 
         function meta:__index(key)
@@ -562,7 +557,7 @@ setmetatable(Class, {
             end
 
             isPriv = type(key) == 'string' and scored(key)
-            isMember = isAssociated(3)
+            isMember = isAssociated(3) or isAssociated(4, get)
 
             ::attempt_access::
             if isPriv and not isMember then
@@ -577,12 +572,12 @@ setmetatable(Class, {
                 return rawset(self, key, value)
             end
 
-            local setEvent = self[set]
+            local setEvent = class[set]
 
             local isPriv, isMember
 
             if type(setEvent) == 'function' then
-                local enum, value = setEvent(self, key)
+                local enum, response = setEvent(self, key, value)
                 if not isEnum(enum) then
                     goto fallen
                 end
@@ -590,11 +585,11 @@ setmetatable(Class, {
                 ---@type Enum
                 enum = enum
                 if enum:IsEqualTo(setted) then
-                    return value
+                    return response
                 elseif enum:IsParent(setted) then
                     -- redirect to the attempt_access label, so it will throw the error directly.
                     if enum:IsEqualTo(setted.Public) then
-                        return value
+                        return response
                     elseif enum:IsEqualTo(setted.Private) then
                         isPriv = true
                         goto attempt_access
@@ -614,7 +609,7 @@ setmetatable(Class, {
                 return error(format(attemptOverwrite, tostring(self), key))
             end
 
-            isMember = isAssociated(3)
+            isMember = isAssociated(3) or isAssociated(4, set)
 
             ::attempt_access::
             if isPriv and not isMember then

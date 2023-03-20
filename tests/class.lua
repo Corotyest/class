@@ -62,7 +62,7 @@ local events = class.events
 -- p(eclass)
 -- print(eclass)
 
-class 't-class'; class 't-class'
+class 't-class'; -- class 't-class' overloaded
 
 -- -- eclass.__tostring = {}
 -- p(eclass.__tostring)

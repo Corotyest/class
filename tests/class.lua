@@ -96,6 +96,11 @@ function setters.normal(self, v)
     p(self.__normal, '-')
 end
 
+function setters.embeddable(self, v)
+    self.__embeddable = v == true
+    p(self.__embeddable)
+end
+
 function new:init(...)
     p('[init]', ...)
 end
@@ -138,4 +143,10 @@ p '------'
 obj.normal = 'ENUM_NORMAL'
 p(obj.normal, new.__normal)
 
-p(obj:find 'parent')
+obj.embeddable = true
+
+for k, v in obj:__iter {--[[  meta = true, roll = true, ]] protected = true } do
+    p(k,v)
+end
+
+p(obj:find(true, { protected = true }, 'parent'))

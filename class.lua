@@ -49,12 +49,12 @@ local function clone(self, into)
         return {}
     end
 
-    table = type2 == 'table' and table or { }
+    into = type2 == 'table' and into or { }
     for index, value in next, (self) do
-        table[index] = value
+        into[index] = value
     end
 
-    return table
+    return into
 end
 
 --- Counts the number of `value` that the table `self` has, but if not `value` passed return all the key-paris count.
@@ -420,6 +420,25 @@ local Class = {
     end
 }
 
+local function embed(fn)
+    return function(self, ...)
+        local list = {}
+
+        local base = {...}
+        local has, options
+        if #base ~= 0 then
+            has, options = base[1], base[2]
+
+            options = has and type(options) == 'table' and options or nil
+        end
+
+        self:__clone(has, options, list)
+
+        return fn(list, unpack(base, options and 3 or 1))
+    end
+end
+
+
 setmetatable(Class, {
     __metatable = {}, -- protected metamethods.
 
@@ -444,7 +463,8 @@ setmetatable(Class, {
                 -- local pub = roll[key] -- distinct between "public" & protected
                 local value = self[key]
                 if value then
-                    return value
+                    local embeddable = rawget(dish, '__embeddable')
+                    return embeddable == true and (type(value) ~= 'function' and value or embed(value)) or value
                 end
 
                 local parent = rawget(dish, '__parent')
@@ -654,6 +674,51 @@ setmetatable(Class, {
                 return next(pool, index)
             end
         end
+
+
+        function class:__clone(...)
+            local type1 = type(self)
+            if type1 ~= 'table' then
+                return error(format(badArg, 'self', '__clone', 'table', type1), 2)
+            end
+
+            local base = {...}
+
+            local options
+            if base[1] == true then
+                options = base[2]
+                options = type(options) == 'table' and options
+                if options then
+                    base[1], base[2] = nil, nil
+                end
+            end
+
+            local iterator = self:__iter(options)
+            local addAllScored = options and options.addAllScored
+
+            for _, weld in next, base do
+                if type(weld) ~= 'table' then
+                    goto continue
+                end
+
+                for index, value in iterator do
+                    if not addAllScored and type(index) == 'string' then
+                        if scored(index) then
+                            goto _continue_
+                        end
+                    end
+
+                    weld[index] = value
+
+                    ::_continue_::
+                end
+
+                ::continue::
+            end
+
+            return self
+        end
+
 
         return class
     end

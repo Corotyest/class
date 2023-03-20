@@ -83,14 +83,33 @@ local events = class.events
 -- local e = 01
 
 local new = class 'new'
-p(new)
+local getters = {}
+local setters = {}
+
+function getters.normal(self)
+    return self.__normal
+end
+
+-- those wont fail 'cause come from `events.set`
+function setters.normal(self, v)
+    self.__normal = v
+    p(self.__normal, '-')
+end
 
 function new:init(...)
     p('[init]', ...)
 end
 
-new[events.get] = function(self, ...)
-    p(self, ...)
+new[events.get] = function(self, k)
+    if getters[k] then
+        return enums.getted, getters[k](self)
+    end
+end
+
+new[events.set] = function(self, k, v)
+    if setters[k] then
+        return enums.setted, setters[k](self, v)
+    end
 end
 
 new[events.call] = function(self, ...)
@@ -114,3 +133,9 @@ p(getParent(), getParent '', '---')
 obj('parent', 1)
 
 p(getParent())
+
+p '------'
+obj.normal = 'ENUM_NORMAL'
+p(obj.normal, new.__normal)
+
+p(obj:find 'parent')
